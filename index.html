@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VYBE STUDIOS — Workshop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-noise"></div>
+    <div class="login-gate" id="loginGate" aria-live="polite">
+      <div class="login-card">
+        <div class="badge">VYBE STUDIOS</div>
+        <h1>Enter the Workshop</h1>
+        <p>Protected access for the studio crew.</p>
+        <label class="field">
+          <span>Password</span>
+          <input id="passwordInput" type="password" placeholder="Enter passcode" />
+        </label>
+        <button id="enterBtn">Enter</button>
+        <div class="login-note" id="loginNote"></div>
+      </div>
+    </div>
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">V</div>
+        <div>
+          <div class="title">VYBE STUDIOS</div>
+          <div class="subtitle">Workshop Flow</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="addNoteBtn">New Card</button>
+        <label class="file-btn">
+          Add PNG
+          <input id="pngInput" type="file" accept="image/png" />
+        </label>
+        <button id="logoutBtn" class="ghost">Lock</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <div class="panel">
+          <h2>Boards</h2>
+          <div class="board-list" id="boardList"></div>
+          <button id="newBoardBtn" class="ghost">+ New Board</button>
+        </div>
+        <div class="panel">
+          <h2>Team Status</h2>
+          <div class="meta">
+            <span id="currentRole">Role: member</span>
+            <span id="currentUser">Access: locked</span>
+          </div>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <div class="tabs">
+          <button class="tab active" data-tab="board">Board</button>
+          <button class="tab" data-tab="announcements">Announcements</button>
+        </div>
+        <div class="tab-panels">
+          <div class="tab-panel active" id="boardPanel">
+            <div class="canvas" id="canvas"></div>
+          </div>
+          <div class="tab-panel" id="announcementsPanel">
+            <div class="announcement-header">
+              <h2>Studio Announcements</h2>
+              <div id="announcementLock" class="lock-note"></div>
+            </div>
+            <textarea
+              id="announcementInput"
+              placeholder="Owner-only announcement..."
+              rows="6"
+            ></textarea>
+            <button id="saveAnnouncementBtn">Publish</button>
+            <div class="announcement-display" id="announcementDisplay"></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="chat">
+        <div class="panel">
+          <h2>Studio Chat</h2>
+          <div class="chat-log" id="chatLog"></div>
+          <div class="chat-input">
+            <input id="chatInput" type="text" placeholder="Message the crew..." />
+            <button id="sendChatBtn">Send</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
