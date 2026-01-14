@@ -1,5 +1,5 @@
 ﻿const STORAGE_KEY = "vybe-workshop-state";
-const SUPABASE_URL = "https://yqqwavldvjnrawmzsyvo.supabase.co";
+const SUPABASE_URL = "https://yqqwavldvjnrawmzsyvo.supabaseClient.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxcXdhdmxkdmpucmF3bXpzeXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0MDg2NzIsImV4cCI6MjA4Mzk4NDY3Mn0.A19R8I77DpEwPRw6fV2qGQh82-q2MUl051ocQ3JqGAA";
 const supabase = window.supabase
@@ -85,7 +85,7 @@ function updateAnnouncementPermissions() {
 }
 
 async function signIn() {
-  if (!supabase) {
+  if (!supabaseClient) {
     loginNote.textContent = "Supabase failed to load. Refresh the page.";
     return;
   }
@@ -95,7 +95,7 @@ async function signIn() {
     loginNote.textContent = "Email and password required.";
     return;
   }
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) {
     const message = error.message.toLowerCase();
     if (message.includes("invalid login credentials")) {
@@ -114,7 +114,7 @@ async function signIn() {
 }
 
 async function signUp() {
-  if (!supabase) {
+  if (!supabaseClient) {
     loginNote.textContent = "Supabase failed to load. Refresh the page.";
     return;
   }
@@ -125,7 +125,7 @@ async function signUp() {
     loginNote.textContent = "Email, password, and username required.";
     return;
   }
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await supabaseClient.auth.signUp({
     email,
     password,
     options: {
@@ -151,8 +151,8 @@ async function signUp() {
 }
 
 async function logout() {
-  if (!supabase) return;
-  await supabase.auth.signOut();
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signOut();
 }
 
 function getActiveBoard() {
@@ -322,10 +322,10 @@ function renderChat() {
 async function sendChat() {
   const text = chatInput.value.trim();
   if (!text) return;
-  if (!state.authed || !supabase) {
+  if (!state.authed || !supabaseClient) {
     return;
   }
-  const { error } = await supabase.from("chat_messages").insert({
+  const { error } = await supabaseClient.from("chat_messages").insert({
     text,
     username: state.userLabel,
     user_id: state.userId,
@@ -338,7 +338,7 @@ async function sendChat() {
 }
 
 async function loadChatHistory() {
-  if (!supabase) return;
+  if (!supabaseClient) return;
   const { data, error } = await supabase
     .from("chat_messages")
     .select("id,text,username,created_at")
@@ -353,9 +353,9 @@ async function loadChatHistory() {
 }
 
 function connectChat() {
-  if (!state.authed || !supabase) return;
+  if (!state.authed || !supabaseClient) return;
   if (chatChannel) {
-    supabase.removeChannel(chatChannel);
+    supabaseClient.removeChannel(chatChannel);
   }
   chatChannel = supabase
     .channel("chat_messages")
@@ -371,9 +371,9 @@ function connectChat() {
 }
 
 function disconnectChat() {
-  if (!supabase) return;
+  if (!supabaseClient) return;
   if (chatChannel) {
-    supabase.removeChannel(chatChannel);
+    supabaseClient.removeChannel(chatChannel);
     chatChannel = null;
   }
 }
@@ -401,15 +401,15 @@ async function applySession(session) {
 }
 
 async function initAuth() {
-  if (!supabase) {
+  if (!supabaseClient) {
     loginNote.textContent = "Supabase failed to load. Refresh the page.";
     return;
   }
   const {
     data: { session },
-  } = await supabase.auth.getSession();
+  } = await supabaseClient.auth.getSession();
   await applySession(session);
-  supabase.auth.onAuthStateChange((_event, updatedSession) => {
+  supabaseClient.auth.onAuthStateChange((_event, updatedSession) => {
     applySession(updatedSession);
   });
 }
@@ -446,3 +446,5 @@ renderAnnouncement();
 renderChat();
 updateLoginUI();
 initAuth();
+
+
