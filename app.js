@@ -1,8 +1,10 @@
-const STORAGE_KEY = "vybe-workshop-state";
+ï»¿const STORAGE_KEY = "vybe-workshop-state";
 const SUPABASE_URL = "https://yqqwavldvjnrawmzsyvo.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxcXdhdmxkdmpucmF3bXpzeXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0MDg2NzIsImV4cCI6MjA4Mzk4NDY3Mn0.A19R8I77DpEwPRw6fV2qGQh82-q2MUl051ocQ3JqGAA";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = window.supabase
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 const loginGate = document.getElementById("loginGate");
 const emailInput = document.getElementById("emailInput");
@@ -45,6 +47,7 @@ function loadState() {
     authed: false,
     role: "member",
     userLabel: "locked",
+    userId: null,
     boards: [
       { id: "main", name: "Main Flow", items: [] },
       { id: "refs", name: "References", items: [] },
@@ -82,6 +85,10 @@ function updateAnnouncementPermissions() {
 }
 
 async function signIn() {
+  if (!supabase) {
+    loginNote.textContent = "Supabase failed to load. Refresh the page.";
+    return;
+  }
   const email = emailInput.value.trim();
   const password = passwordInput.value.trim();
   if (!email || !password) {
@@ -90,6 +97,15 @@ async function signIn() {
   }
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("invalid login credentials")) {
+      loginNote.textContent = "No account found. Please sign up first.";
+      return;
+    }
+    if (message.includes("email not confirmed")) {
+      loginNote.textContent = "Check your email to confirm before signing in.";
+      return;
+    }
     loginNote.textContent = error.message;
     return;
   }
@@ -98,6 +114,10 @@ async function signIn() {
 }
 
 async function signUp() {
+  if (!supabase) {
+    loginNote.textContent = "Supabase failed to load. Refresh the page.";
+    return;
+  }
   const email = emailInput.value.trim();
   const password = passwordInput.value.trim();
   const username = usernameInput.value.trim();
@@ -105,7 +125,7 @@ async function signUp() {
     loginNote.textContent = "Email, password, and username required.";
     return;
   }
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -116,14 +136,22 @@ async function signUp() {
     },
   });
   if (error) {
+    if (error.message.toLowerCase().includes("already registered")) {
+      loginNote.textContent = "Account exists. Please sign in.";
+      return;
+    }
     loginNote.textContent = error.message;
     return;
   }
-  loginNote.textContent = "Check your email to confirm your account.";
+  usernameInput.value = "";
   passwordInput.value = "";
+  loginNote.textContent = data?.session
+    ? "Account created. You're signed in."
+    : "Check your email to confirm, then sign in.";
 }
 
 async function logout() {
+  if (!supabase) return;
   await supabase.auth.signOut();
 }
 
@@ -281,7 +309,7 @@ function renderChat() {
     const meta = document.createElement("div");
     meta.className = "meta";
     const time = entry.created_at || entry.time;
-    meta.textContent = `${entry.username || entry.role} ƒ?› ${new Date(time).toLocaleTimeString()}`;
+    meta.textContent = `${entry.username || entry.role} > ${new Date(time).toLocaleTimeString()}`;
     const text = document.createElement("div");
     text.textContent = entry.text || "";
     bubble.appendChild(meta);
@@ -294,7 +322,7 @@ function renderChat() {
 async function sendChat() {
   const text = chatInput.value.trim();
   if (!text) return;
-  if (!state.authed) {
+  if (!state.authed || !supabase) {
     return;
   }
   const { error } = await supabase.from("chat_messages").insert({
@@ -310,6 +338,7 @@ async function sendChat() {
 }
 
 async function loadChatHistory() {
+  if (!supabase) return;
   const { data, error } = await supabase
     .from("chat_messages")
     .select("id,text,username,created_at")
@@ -324,7 +353,7 @@ async function loadChatHistory() {
 }
 
 function connectChat() {
-  if (!state.authed) return;
+  if (!state.authed || !supabase) return;
   if (chatChannel) {
     supabase.removeChannel(chatChannel);
   }
@@ -342,6 +371,7 @@ function connectChat() {
 }
 
 function disconnectChat() {
+  if (!supabase) return;
   if (chatChannel) {
     supabase.removeChannel(chatChannel);
     chatChannel = null;
@@ -371,6 +401,10 @@ async function applySession(session) {
 }
 
 async function initAuth() {
+  if (!supabase) {
+    loginNote.textContent = "Supabase failed to load. Refresh the page.";
+    return;
+  }
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -379,6 +413,7 @@ async function initAuth() {
     applySession(updatedSession);
   });
 }
+
 signInBtn.addEventListener("click", signIn);
 signUpBtn.addEventListener("click", signUp);
 passwordInput.addEventListener("keydown", (event) => {
@@ -411,5 +446,3 @@ renderAnnouncement();
 renderChat();
 updateLoginUI();
 initAuth();
-
-
