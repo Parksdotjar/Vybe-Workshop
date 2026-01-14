@@ -69,6 +69,12 @@ body {
   margin: 0;
 }
 
+.login-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .badge {
   font-size: 12px;
   font-weight: 700;

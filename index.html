@@ -14,16 +14,27 @@
   </head>
   <body>
     <div class="bg-noise"></div>
-    <div class="login-gate" id="loginGate" aria-live="polite">
+      <div class="login-gate" id="loginGate" aria-live="polite">
       <div class="login-card">
         <div class="badge">VYBE STUDIOS</div>
         <h1>Enter the Workshop</h1>
-        <p>Protected access for the studio crew.</p>
+        <p>Sign in to join the studio crew.</p>
+        <label class="field">
+          <span>Email</span>
+          <input id="emailInput" type="email" placeholder="name@studio.com" />
+        </label>
         <label class="field">
           <span>Password</span>
-          <input id="passwordInput" type="password" placeholder="Enter passcode" />
+          <input id="passwordInput" type="password" placeholder="Enter password" />
         </label>
-        <button id="enterBtn">Enter</button>
+        <label class="field">
+          <span>Username</span>
+          <input id="usernameInput" type="text" placeholder="Display name (sign up only)" />
+        </label>
+        <div class="login-actions">
+          <button id="signInBtn">Sign In</button>
+          <button id="signUpBtn" class="ghost">Sign Up</button>
+        </div>
         <div class="login-note" id="loginNote"></div>
       </div>
     </div>
@@ -99,6 +110,7 @@
       </aside>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
   </body>
 </html>

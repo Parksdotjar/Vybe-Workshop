@@ -1,10 +1,15 @@
 const STORAGE_KEY = "vybe-workshop-state";
-const MEMBER_PASSWORD = "vybe2026";
-const OWNER_PASSWORD = "vybeowner";
+const SUPABASE_URL = "https://yqqwavldvjnrawmzsyvo.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxcXdhdmxkdmpucmF3bXpzeXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0MDg2NzIsImV4cCI6MjA4Mzk4NDY3Mn0.A19R8I77DpEwPRw6fV2qGQh82-q2MUl051ocQ3JqGAA";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const loginGate = document.getElementById("loginGate");
+const emailInput = document.getElementById("emailInput");
 const passwordInput = document.getElementById("passwordInput");
-const enterBtn = document.getElementById("enterBtn");
+const usernameInput = document.getElementById("usernameInput");
+const signInBtn = document.getElementById("signInBtn");
+const signUpBtn = document.getElementById("signUpBtn");
 const loginNote = document.getElementById("loginNote");
 const logoutBtn = document.getElementById("logoutBtn");
 
@@ -32,7 +37,7 @@ const currentUser = document.getElementById("currentUser");
 let state = loadState();
 let draggingCard = null;
 let dragOffset = { x: 0, y: 0 };
-let chatSocket = null;
+let chatChannel = null;
 let chatMessages = [];
 
 function loadState() {
@@ -63,7 +68,7 @@ function saveState() {
 function updateLoginUI() {
   loginGate.classList.toggle("hidden", state.authed);
   currentRole.textContent = `Role: ${state.role}`;
-  currentUser.textContent = `Access: ${state.authed ? "active" : "locked"}`;
+  currentUser.textContent = `Access: ${state.authed ? state.userLabel : "locked"}`;
   updateAnnouncementPermissions();
 }
 
@@ -76,32 +81,50 @@ function updateAnnouncementPermissions() {
     : "Owner access granted.";
 }
 
-function login() {
-  const attempt = passwordInput.value.trim();
-  if (!attempt) {
-    loginNote.textContent = "Enter the studio passcode.";
+async function signIn() {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
+  if (!email || !password) {
+    loginNote.textContent = "Email and password required.";
     return;
   }
-  let role = null;
-  if (attempt === MEMBER_PASSWORD) role = "member";
-  if (attempt === OWNER_PASSWORD) role = "owner";
-  if (!role) {
-    loginNote.textContent = "Incorrect password. Try again.";
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    loginNote.textContent = error.message;
     return;
   }
-  state.authed = true;
-  state.role = role;
-  state.userLabel = `signed-${Date.now()}`;
-  saveState();
-  updateLoginUI();
   loginNote.textContent = "";
   passwordInput.value = "";
 }
 
-function logout() {
-  state.authed = false;
-  saveState();
-  updateLoginUI();
+async function signUp() {
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
+  const username = usernameInput.value.trim();
+  if (!email || !password || !username) {
+    loginNote.textContent = "Email, password, and username required.";
+    return;
+  }
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        username,
+        role: "member",
+      },
+    },
+  });
+  if (error) {
+    loginNote.textContent = error.message;
+    return;
+  }
+  loginNote.textContent = "Check your email to confirm your account.";
+  passwordInput.value = "";
+}
+
+async function logout() {
+  await supabase.auth.signOut();
 }
 
 function getActiveBoard() {
@@ -257,9 +280,10 @@ function renderChat() {
     bubble.className = "chat-bubble";
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.textContent = `${entry.role} â€¢ ${new Date(entry.time).toLocaleTimeString()}`;
+    const time = entry.created_at || entry.time;
+    meta.textContent = `${entry.username || entry.role} ƒ?› ${new Date(time).toLocaleTimeString()}`;
     const text = document.createElement("div");
-    text.textContent = entry.text;
+    text.textContent = entry.text || "";
     bubble.appendChild(meta);
     bubble.appendChild(text);
     chatLog.appendChild(bubble);
@@ -267,58 +291,98 @@ function renderChat() {
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-function sendChat() {
+async function sendChat() {
   const text = chatInput.value.trim();
   if (!text) return;
-  if (!chatSocket || chatSocket.readyState !== WebSocket.OPEN) {
+  if (!state.authed) {
     return;
   }
-  chatSocket.send(
-    JSON.stringify({
-      type: "chat",
-      text,
-      role: state.role,
-      time: Date.now(),
-    })
-  );
+  const { error } = await supabase.from("chat_messages").insert({
+    text,
+    username: state.userLabel,
+    user_id: state.userId,
+  });
+  if (error) {
+    console.error("Chat send error", error);
+    return;
+  }
   chatInput.value = "";
 }
 
-function connectChat() {
-  const endpoint = new URL("/chat", window.location.href);
-  endpoint.protocol = endpoint.protocol === "https:" ? "wss:" : "ws:";
-  chatSocket = new WebSocket(endpoint.toString());
-
-  chatSocket.addEventListener("open", () => {
-    sendChatBtn.disabled = false;
-    chatInput.placeholder = "Message the crew...";
-  });
-
-  chatSocket.addEventListener("message", (event) => {
-    try {
-      const payload = JSON.parse(event.data);
-      if (payload.type === "history") {
-        chatMessages = payload.messages || [];
-      }
-      if (payload.type === "chat") {
-        chatMessages.push(payload.message);
-      }
-      renderChat();
-    } catch (error) {
-      console.error("Chat message error", error);
-    }
-  });
-
-  chatSocket.addEventListener("close", () => {
-    sendChatBtn.disabled = true;
-    chatInput.placeholder = "Chat offline (reconnecting...)";
-    setTimeout(connectChat, 1500);
-  });
+async function loadChatHistory() {
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select("id,text,username,created_at")
+    .order("created_at", { ascending: true })
+    .limit(200);
+  if (error) {
+    console.error("Chat history error", error);
+    return;
+  }
+  chatMessages = data || [];
+  renderChat();
 }
 
-enterBtn.addEventListener("click", login);
+function connectChat() {
+  if (!state.authed) return;
+  if (chatChannel) {
+    supabase.removeChannel(chatChannel);
+  }
+  chatChannel = supabase
+    .channel("chat_messages")
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "chat_messages" },
+      (payload) => {
+        chatMessages.push(payload.new);
+        renderChat();
+      }
+    )
+    .subscribe();
+}
+
+function disconnectChat() {
+  if (chatChannel) {
+    supabase.removeChannel(chatChannel);
+    chatChannel = null;
+  }
+}
+
+async function applySession(session) {
+  state.authed = !!session;
+  state.userId = session?.user?.id || null;
+  state.userLabel =
+    session?.user?.user_metadata?.username ||
+    session?.user?.email ||
+    "member";
+  state.role = session?.user?.user_metadata?.role || "member";
+  saveState();
+  updateLoginUI();
+  if (state.authed) {
+    sendChatBtn.disabled = false;
+    chatInput.placeholder = "Message the crew...";
+    await loadChatHistory();
+    connectChat();
+  } else {
+    sendChatBtn.disabled = true;
+    chatInput.placeholder = "Sign in to chat.";
+    disconnectChat();
+  }
+}
+
+async function initAuth() {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  await applySession(session);
+  supabase.auth.onAuthStateChange((_event, updatedSession) => {
+    applySession(updatedSession);
+  });
+}
+signInBtn.addEventListener("click", signIn);
+signUpBtn.addEventListener("click", signUp);
 passwordInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") login();
+  if (event.key === "Enter") signIn();
 });
 logoutBtn.addEventListener("click", logout);
 
@@ -344,6 +408,8 @@ window.addEventListener("mouseup", stopDrag);
 renderBoards();
 renderCanvas();
 renderAnnouncement();
-connectChat();
 renderChat();
 updateLoginUI();
+initAuth();
+
+
